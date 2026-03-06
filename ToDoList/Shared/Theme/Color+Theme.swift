@@ -121,3 +121,22 @@ extension Color {
         )
     }
 }
+
+// MARK: - Color Palette
+
+struct ColorPalette {
+    static let taskColors: [String] = [
+        "#DDD6FE",  // Pastel Purple
+        "#FED7D7",  // Pastel Pink
+        "#FEF3C7",  // Pastel Yellow
+        "#DBEAFE",  // Pastel Blue
+        "#D1FAE5",  // Pastel Green
+        "#FECACA",  // Pastel Red
+        "#FED7AA",  // Pastel Orange
+        "#E9D5FF",  // Pastel Lavender
+        "#BFDBFE",  // Pastel Sky Blue
+        "#FCE7F3",  // Pastel Rose
+        "#FEF9C3",  // Pastel Lemon
+        "#D1D5DB"   // Pastel Gray
+    ]
+}

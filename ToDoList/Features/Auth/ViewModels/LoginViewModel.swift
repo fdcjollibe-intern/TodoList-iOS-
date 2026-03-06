@@ -1,4 +1,10 @@
-// Features/Auth/ViewModels/LoginViewModel.swift
+//
+//  LoginViewModel.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
+
 
 import Foundation
 import Observation
@@ -65,6 +71,48 @@ final class LoginViewModel {
     
     func clearError() {
         errorMessage = nil
+    }
+    
+    @MainActor
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let userId = try await authService.signInWithGoogle()
+            
+            // Check if user exists in database, if not create profile
+            do {
+                _ = try await databaseService.fetchUser(userId: userId)
+            } catch {
+                // User doesn't exist, create profile
+                if let email = await authService.currentUserEmail {
+                    let timestamp = Date().timeIntervalSince1970
+                    let displayName = email.components(separatedBy: "@").first ?? "User"
+                    let user = User(
+                        id: userId,
+                        email: email,
+                        displayName: displayName,
+                        createdAt: timestamp,
+                        lastLoginAt: timestamp
+                    )
+                    try await databaseService.saveUser(user)
+                }
+            }
+            
+            // Update last login timestamp
+            let timestamp = Date().timeIntervalSince1970
+            try await databaseService.updateValues(
+                ["lastLoginAt": timestamp],
+                at: "\(DBPath.users)/\(userId)"
+            )
+            
+            isAuthenticated = true
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = AuthError.from(error).errorDescription ?? ErrorMessage.genericError
+        }
     }
     
     // MARK: - Mock Factory

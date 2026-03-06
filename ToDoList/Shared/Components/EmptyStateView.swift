@@ -1,4 +1,9 @@
-// Shared/Components/EmptyStateView.swift
+//
+//  EmptyStateView.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
 
 import SwiftUI
 

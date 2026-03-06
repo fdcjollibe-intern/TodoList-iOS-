@@ -1,4 +1,11 @@
-// Features/Auth/Views/LoginView.swift
+//
+//  LoginView.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
+
+
 
 import SwiftUI
 
@@ -118,6 +125,20 @@ struct LoginView: View {
             ) {
                 Task {
                     await viewModel.signIn()
+                }
+            }
+            
+            // Divider
+            DividerWithText(text: "or")
+            
+            // Google Sign In Button
+            SecondaryButton(
+                title: "Continue with Google",
+                icon: "globe",
+                isLoading: viewModel.isLoading
+            ) {
+                Task {
+                    await viewModel.signInWithGoogle()
                 }
             }
             

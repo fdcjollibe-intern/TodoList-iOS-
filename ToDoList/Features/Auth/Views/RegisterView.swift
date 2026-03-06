@@ -1,4 +1,10 @@
-// Features/Auth/Views/RegisterView.swift
+//
+//  RegisterView.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
+
 
 import SwiftUI
 
@@ -33,6 +39,7 @@ struct RegisterView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: { dismiss() }) {
@@ -146,6 +153,20 @@ struct RegisterView: View {
             ) {
                 Task {
                     await viewModel.register()
+                }
+            }
+            
+            // Divider
+            DividerWithText(text: "or")
+            
+            // Google Sign Up Button
+            SecondaryButton(
+                title: "Sign up with Google",
+                icon: "globe",
+                isLoading: viewModel.isLoading
+            ) {
+                Task {
+                    await viewModel.signUpWithGoogle()
                 }
             }
             

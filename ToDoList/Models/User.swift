@@ -1,6 +1,13 @@
-// Models/User.swift
+//
+//  User.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
+
 
 import Foundation
+import SwiftUI
 
 struct User: Codable, Identifiable, Equatable {
     // MARK: - Properties
@@ -8,8 +15,12 @@ struct User: Codable, Identifiable, Equatable {
     let id: String
     var email: String
     var displayName: String
+    var firstName: String?
+    var lastName: String?
     var createdAt: TimeInterval
     var lastLoginAt: TimeInterval?
+    var appTheme: String = "Light"
+    var profilePhoto: String?
     
     // MARK: - Computed Properties
     
@@ -20,14 +31,40 @@ struct User: Codable, Identifiable, Equatable {
         return (firstInitial + lastInitial).uppercased()
     }
     
+    var profileColor: Color {
+        if let profilePhoto = profilePhoto {
+            return Color(hex: profilePhoto)
+        }
+        return Color(hex: User.randomPastelColor())
+    }
+    
     // MARK: - Init
     
-    init(id: String, email: String, displayName: String, createdAt: TimeInterval, lastLoginAt: TimeInterval? = nil) {
+    nonisolated init(
+        id: String,
+        email: String,
+        displayName: String,
+        firstName: String? = nil,
+        lastName: String? = nil,
+        createdAt: TimeInterval,
+        lastLoginAt: TimeInterval? = nil,
+        appTheme: String = "Light",
+        profilePhoto: String? = nil
+    ) {
         self.id = id
         self.email = email
         self.displayName = displayName
+        self.firstName = firstName
+        self.lastName = lastName
         self.createdAt = createdAt
         self.lastLoginAt = lastLoginAt
+        self.appTheme = appTheme
+        self.profilePhoto = profilePhoto ?? User.randomPastelColor()
+    }
+    
+    /// Generate a random pastel color hex string for profile picture
+    static func randomPastelColor() -> String {
+        return PastelColors.random()
     }
     
     // MARK: - Methods
@@ -38,38 +75,26 @@ struct User: Codable, Identifiable, Equatable {
             "id": id,
             "email": email,
             "displayName": displayName,
-            "createdAt": createdAt
+            "createdAt": createdAt,
+            "appTheme": appTheme
         ]
+        
+        if let firstName = firstName {
+            dict["firstName"] = firstName
+        }
+        
+        if let lastName = lastName {
+            dict["lastName"] = lastName
+        }
         
         if let lastLoginAt = lastLoginAt {
             dict["lastLoginAt"] = lastLoginAt
         }
         
+        if let profilePhoto = profilePhoto {
+            dict["profilePhoto"] = profilePhoto
+        }
+        
         return dict
     }
-    
-    // MARK: - Mock Data
-    
-    static let mock = User(
-        id: "mock-user-1",
-        email: "john.doe@example.com",
-        displayName: "John Doe",
-        createdAt: Date().timeIntervalSince1970,
-        lastLoginAt: Date().timeIntervalSince1970
-    )
-    
-    static let mockList = [
-        User(
-            id: "mock-user-1",
-            email: "john.doe@example.com",
-            displayName: "John Doe",
-            createdAt: Date().timeIntervalSince1970
-        ),
-        User(
-            id: "mock-user-2",
-            email: "jane.smith@example.com",
-            displayName: "Jane Smith",
-            createdAt: Date().timeIntervalSince1970
-        )
-    ]
 }

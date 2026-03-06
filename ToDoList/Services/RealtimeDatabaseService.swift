@@ -1,4 +1,10 @@
-// Services/RealtimeDatabaseService.swift
+//
+//  RealtimeDatabaseService.swift
+//  ToDoList
+//
+//  Created by Jollibe Dablo - INTERN on 3/6/26.
+//
+
 
 import Foundation
 import FirebaseDatabase
@@ -47,6 +53,59 @@ actor RealtimeDatabaseService {
         try await userRef.removeValue()
     }
     
+    // MARK: - Task Operations
+    
+    /// Save task to database
+    func saveTask(_ task: TaskItem) async throws {
+        let taskRef = database.child(DBPath.tasks).child(task.userId).child(task.id)
+        try await taskRef.setValue(task.toDictionary())
+    }
+    
+    /// Fetch all tasks for a user
+    func fetchTasks(userId: String) async throws -> [TaskItem] {
+        let tasksRef = database.child(DBPath.tasks).child(userId)
+        let snapshot = try await tasksRef.getData()
+        
+        guard let value = snapshot.value as? [String: Any] else {
+            return []
+        }
+        
+        return try value.compactMap { _, taskData in
+            guard let taskDict = taskData as? [String: Any] else { return nil }
+            return try parseTask(from: taskDict)
+        }
+    }
+    
+    /// Fetch single task
+    func fetchTask(userId: String, taskId: String) async throws -> TaskItem {
+        let taskRef = database.child(DBPath.tasks).child(userId).child(taskId)
+        let snapshot = try await taskRef.getData()
+        
+        guard let value = snapshot.value as? [String: Any] else {
+            throw DatabaseError.dataNotFound
+        }
+        
+        return try parseTask(from: value)
+    }
+    
+    /// Update task
+    func updateTask(_ task: TaskItem) async throws {
+        let taskRef = database.child(DBPath.tasks).child(task.userId).child(task.id)
+        try await taskRef.updateChildValues(task.toDictionary())
+    }
+    
+    /// Delete task
+    func deleteTask(userId: String, taskId: String) async throws {
+        let taskRef = database.child(DBPath.tasks).child(userId).child(taskId)
+        try await taskRef.removeValue()
+    }
+    
+    /// Fetch tasks with due dates (for calendar)
+    func fetchTasksWithDueDates(userId: String) async throws -> [TaskItem] {
+        let tasks = try await fetchTasks(userId: userId)
+        return tasks.filter { $0.dueDate != nil }
+    }
+    
     // MARK: - Generic Operations
     
     /// Set value at path
@@ -91,7 +150,54 @@ actor RealtimeDatabaseService {
     
     // MARK: - Helper Methods
     
-    private func parseUser(from data: [String: Any]) throws -> User {
+    nonisolated private func parseTask(from data: [String: Any]) throws -> TaskItem {
+        guard let id = data["id"] as? String,
+              let userId = data["userId"] as? String,
+              let title = data["title"] as? String,
+              let categoryString = data["category"] as? String,
+              let category = TaskCategory(rawValue: categoryString),
+              let color = data["color"] as? String,
+              let isCompleted = data["isCompleted"] as? Bool,
+              let createdAt = data["createdAt"] as? TimeInterval,
+              let updatedAt = data["updatedAt"] as? TimeInterval else {
+            throw DatabaseError.invalidData
+        }
+        
+        let description = data["description"] as? String
+        let dueDate = data["dueDate"] as? TimeInterval
+        let collaborators = data["collaborators"] as? [String] ?? []
+        let notifyOnChanges = data["notifyOnChanges"] as? Bool ?? true
+        
+        var subtasks: [Subtask] = []
+        if let subtasksData = data["subtasks"] as? [[String: Any]] {
+            subtasks = subtasksData.compactMap { subtaskData in
+                guard let id = subtaskData["id"] as? String,
+                      let title = subtaskData["title"] as? String,
+                      let isCompleted = subtaskData["isCompleted"] as? Bool else {
+                    return nil
+                }
+                return Subtask(id: id, title: title, isCompleted: isCompleted)
+            }
+        }
+        
+        return TaskItem(
+            id: id,
+            userId: userId,
+            title: title,
+            description: description,
+            category: category,
+            color: color,
+            isCompleted: isCompleted,
+            subtasks: subtasks,
+            dueDate: dueDate,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            collaborators: collaborators,
+            notifyOnChanges: notifyOnChanges
+        )
+    }
+    
+    nonisolated private func parseUser(from data: [String: Any]) throws -> User {
         guard let id = data["id"] as? String,
               let email = data["email"] as? String,
               let displayName = data["displayName"] as? String,
@@ -100,13 +206,17 @@ actor RealtimeDatabaseService {
         }
         
         let lastLoginAt = data["lastLoginAt"] as? TimeInterval
+        let appTheme = data["appTheme"] as? String ?? "Light"
+        let profilePhoto = data["profilePhoto"] as? String
         
         return User(
             id: id,
             email: email,
             displayName: displayName,
             createdAt: createdAt,
-            lastLoginAt: lastLoginAt
+            lastLoginAt: lastLoginAt,
+            appTheme: appTheme,
+            profilePhoto: profilePhoto
         )
     }
 }

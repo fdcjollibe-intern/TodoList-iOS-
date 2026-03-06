@@ -1,33 +1,29 @@
-//
-//  PrimaryButton.swift
-//  ToDoList
-//
-//  Created by Jollibe Dablo - INTERN on 3/6/26.
-//
+// Shared/Components/SecondaryButton.swift
+
 import SwiftUI
 
-struct PrimaryButton: View {
+struct SecondaryButton: View {
     // MARK: - Properties
     
     let title: String
+    var icon: String?
     var isLoading: Bool
     var isDisabled: Bool
-    var backgroundColor: Color
     let action: () -> Void
     
     // MARK: - Init
     
     init(
         title: String,
+        icon: String? = nil,
         isLoading: Bool = false,
         isDisabled: Bool = false,
-        backgroundColor: Color = Color.appPrimary,
         action: @escaping () -> Void
     ) {
         self.title = title
+        self.icon = icon
         self.isLoading = isLoading
         self.isDisabled = isDisabled
-        self.backgroundColor = backgroundColor
         self.action = action
     }
     
@@ -39,27 +35,35 @@ struct PrimaryButton: View {
                 action()
             }
         }) {
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.md) {
                 if isLoading {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .textPrimary))
                         .scaleEffect(0.9)
+                } else if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Color.textPrimary)
                 }
                 
                 Text(title)
                     .font(Typography.buttonLarge)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.textPrimary)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(
-                isDisabled || isLoading
-                    ? Color.textTertiary
-                    : backgroundColor
-            )
+            .background(Color.appSurface)
             .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isDisabled || isLoading ? Color.appBorder : Color.textTertiary,
+                        lineWidth: 1.5
+                    )
+            )
         }
         .disabled(isDisabled || isLoading)
+        .opacity(isDisabled ? 0.5 : 1.0)
     }
 }
 
@@ -67,15 +71,26 @@ struct PrimaryButton: View {
 
 #Preview {
     VStack(spacing: Spacing.lg) {
-        PrimaryButton(title: "Sign In") {
+        SecondaryButton(
+            title: "Continue with Google",
+            icon: "globe"
+        ) {
             print("Button tapped")
         }
         
-        PrimaryButton(title: "Signing In...", isLoading: true) {
+        SecondaryButton(
+            title: "Signing In...",
+            icon: "globe",
+            isLoading: true
+        ) {
             print("Button tapped")
         }
         
-        PrimaryButton(title: "Sign In", isDisabled: true) {
+        SecondaryButton(
+            title: "Continue with Google",
+            icon: "globe",
+            isDisabled: true
+        ) {
             print("Button tapped")
         }
     }
