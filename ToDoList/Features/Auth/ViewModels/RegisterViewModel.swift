@@ -12,6 +12,8 @@ import Observation
 final class RegisterViewModel {
     // MARK: - Published State
     
+    var firstName: String = ""
+    var lastName: String = ""
     var displayName: String = ""
     var email: String = ""
     var password: String = ""
@@ -75,6 +77,8 @@ final class RegisterViewModel {
                 id: userId,
                 email: email.trimmed,
                 displayName: displayName.trimmed,
+                firstName: firstName.trimmed.isEmpty ? nil : firstName.trimmed,
+                lastName: lastName.trimmed.isEmpty ? nil : lastName.trimmed,
                 createdAt: timestamp,
                 lastLoginAt: timestamp
             )

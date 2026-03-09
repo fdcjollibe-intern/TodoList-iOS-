@@ -20,6 +20,14 @@ struct TaskDetailView: View {
     @State private var collaboratorEmail = ""
     @State private var showPremiumBanner = false
     
+    // Check if current user is the task owner
+    private var isOwner: Bool {
+        guard let currentUserId = UserDefaults.standard.string(forKey: "userId") else {
+            return false
+        }
+        return viewModel.task.userId == currentUserId
+    }
+    
     // MARK: - Init
     
     init(task: TaskItem) {
@@ -79,19 +87,21 @@ struct TaskDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(action: { 
-                    if isEditMode {
-                        Task {
-                            await viewModel.updateTask()
+                if isOwner {
+                    Button(action: { 
+                        if isEditMode {
+                            Task {
+                                await viewModel.updateTask()
+                            }
                         }
+                        isEditMode.toggle()
+                    }) {
+                        Text(isEditMode ? "Done" : "Edit")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.appPrimary)
                     }
-                    isEditMode.toggle()
-                }) {
-                    Text(isEditMode ? "Done" : "Edit")
-                        .font(Typography.bodyMedium)
-                        .foregroundStyle(Color.appPrimary)
+                    .disabled(isEditMode && !viewModel.canSave)
                 }
-                .disabled(isEditMode && !viewModel.canSave)
             }
         }
         .sheet(isPresented: $showColorPicker) {
@@ -123,7 +133,7 @@ struct TaskDetailView: View {
     private var taskHeaderCard: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             // Title
-            if isEditMode {
+            if isEditMode && isOwner {
                 TextField("Task title", text: $viewModel.task.title, axis: .vertical)
                     .font(Typography.title2)
                     .foregroundStyle(Color.textPrimary)
@@ -163,7 +173,7 @@ struct TaskDetailView: View {
                 .font(Typography.bodyMedium)
                 .foregroundStyle(Color.textSecondary)
             
-            if isEditMode {
+            if isEditMode && isOwner {
                 TextField("Add description...", text: Binding(
                     get: { viewModel.task.description ?? "" },
                     set: { viewModel.updateDescription($0.isEmpty ? nil : $0) }
@@ -201,7 +211,7 @@ struct TaskDetailView: View {
     
     private var categoryPrioritySection: some View {
         Group {
-            if isEditMode {
+            if isEditMode && isOwner {
                 // Edit Mode: Separate rows for each
                 VStack(spacing: Spacing.lg) {
                     // Category
@@ -310,7 +320,7 @@ struct TaskDetailView: View {
                 .font(Typography.bodyMedium)
                 .foregroundStyle(Color.textSecondary)
             
-            if isEditMode {
+            if isEditMode && isOwner {
                 Button(action: { showColorPicker = true }) {
                     HStack {
                         RoundedRectangle(cornerRadius: 8)
@@ -365,7 +375,7 @@ struct TaskDetailView: View {
                 
                 Spacer()
                 
-                if isEditMode && viewModel.task.dueDate != nil {
+                if isEditMode && isOwner && viewModel.task.dueDate != nil {
                     Button(action: {
                         viewModel.updateDueDate(nil)
                     }) {
@@ -376,7 +386,7 @@ struct TaskDetailView: View {
                 }
             }
             
-            if isEditMode {
+            if isEditMode && isOwner {
                 DatePicker(
                     "Select date",
                     selection: Binding(
@@ -450,7 +460,7 @@ struct TaskDetailView: View {
                 }
             }
             .tint(Color.appPrimary)
-            .disabled(!isEditMode)
+            .disabled(!isEditMode || !isOwner)
         }
         .padding(Spacing.lg)
         .cardStyle()
@@ -481,7 +491,7 @@ struct TaskDetailView: View {
             }
             
             // Add Collaborator Field (only in edit mode)
-            if isEditMode {
+            if isEditMode && isOwner {
                 HStack(spacing: Spacing.sm) {
                     Image(systemName: "envelope")
                         .font(.system(size: 16))
@@ -529,7 +539,7 @@ struct TaskDetailView: View {
             
             Spacer()
             
-            if isEditMode {
+            if isEditMode && isOwner {
                 Button(action: {
                     viewModel.removeCollaborator(email: email)
                 }) {
@@ -566,21 +576,25 @@ struct TaskDetailView: View {
     }
     
     private var deleteButton: some View {
-        Button(action: {
-            showDeleteConfirmation = true
-        }) {
-            HStack {
-                Image(systemName: "trash")
-                Text("Delete Task")
+        Group {
+            if isOwner {
+                Button(action: {
+                    showDeleteConfirmation = true
+                }) {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Delete Task")
+                    }
+                    .font(Typography.bodyMedium)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Spacing.md)
+                    .background(Color.appDestructive)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, Spacing.lg)
             }
-            .font(Typography.bodyMedium)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(Spacing.md)
-            .background(Color.appDestructive)
-            .cornerRadius(12)
         }
-        .padding(.horizontal, Spacing.lg)
     }
 }
 

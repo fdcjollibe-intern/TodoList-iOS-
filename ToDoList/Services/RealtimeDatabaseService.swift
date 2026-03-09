@@ -128,6 +128,59 @@ actor RealtimeDatabaseService {
         return tasks.filter { $0.dueDate != nil }
     }
     
+    /// Fetch tasks where user is a collaborator
+    func fetchCollaboratedTasks(userEmail: String) async throws -> [TaskItem] {
+        let tasksRef = database.child(DBPath.tasks)
+        let snapshot = try await tasksRef.getData()
+        
+        guard let allUserTasks = snapshot.value as? [String: Any] else {
+            return []
+        }
+        
+        var collaboratedTasks: [TaskItem] = []
+        
+        // Iterate through all users' tasks
+        for (_, userTasks) in allUserTasks {
+            guard let tasks = userTasks as? [String: Any] else { continue }
+            
+            // Check each task to see if user is a collaborator
+            for (_, taskData) in tasks {
+                guard let taskDict = taskData as? [String: Any],
+                      let collaborators = taskDict["collaborators"] as? [String] else {
+                    continue
+                }
+                
+                // If user's email is in collaborators, include this task
+                if collaborators.contains(where: { $0.lowercased() == userEmail.lowercased() }) {
+                    if let task = try? parseTask(from: taskDict) {
+                        collaboratedTasks.append(task)
+                    }
+                }
+            }
+        }
+        
+        return collaboratedTasks
+    }
+    
+    /// Fetch all tasks for a user (owned + collaborated)
+    func fetchAllUserTasks(userId: String, userEmail: String) async throws -> [TaskItem] {
+        async let ownedTasks = fetchTasks(userId: userId)
+        async let collaboratedTasks = fetchCollaboratedTasks(userEmail: userEmail)
+        
+        let owned = try await ownedTasks
+        let collaborated = try await collaboratedTasks
+        
+        // Combine and deduplicate (in case user is both owner and collaborator)
+        var allTasks = owned
+        for task in collaborated {
+            if !allTasks.contains(where: { $0.id == task.id }) {
+                allTasks.append(task)
+            }
+        }
+        
+        return allTasks
+    }
+    
     // MARK: - Generic Operations
     
     /// Set value at path
@@ -217,6 +270,8 @@ actor RealtimeDatabaseService {
             throw DatabaseError.invalidData
         }
         
+        let firstName = data["firstName"] as? String
+        let lastName = data["lastName"] as? String
         let lastLoginAt = data["lastLoginAt"] as? TimeInterval
         let appTheme = data["appTheme"] as? String ?? "Light"
         let profilePhoto = data["profilePhoto"] as? String
@@ -225,6 +280,8 @@ actor RealtimeDatabaseService {
             id: id,
             email: email,
             displayName: displayName,
+            firstName: firstName,
+            lastName: lastName,
             createdAt: createdAt,
             lastLoginAt: lastLoginAt,
             appTheme: appTheme,

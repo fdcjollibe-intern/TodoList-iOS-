@@ -38,7 +38,19 @@ final class HomeViewModel {
         errorMessage = nil
         
         do {
-            tasks = try await databaseService.fetchTasks(userId: userId)
+            // Get current user to fetch their email
+            if currentUser == nil {
+                currentUser = try await databaseService.fetchUser(userId: userId)
+            }
+            
+            guard let userEmail = currentUser?.email else {
+                tasks = try await databaseService.fetchTasks(userId: userId)
+                isLoading = false
+                return
+            }
+            
+            // Fetch both owned and collaborated tasks
+            tasks = try await databaseService.fetchAllUserTasks(userId: userId, userEmail: userEmail)
         } catch {
             errorMessage = "Failed to load tasks: \(error.localizedDescription)"
         }

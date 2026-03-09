@@ -45,7 +45,7 @@ struct RegisterView: View {
     // MARK: - View Components
     
     private var topSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: 12) {
             // Back Button
             Button(action: { dismiss() }) {
                 Image(systemName: "chevron.left")
@@ -55,33 +55,33 @@ struct RegisterView: View {
                     .background(Color.white.opacity(0.2))
                     .cornerRadius(10)
             }
-            .padding(.bottom, Spacing.sm)
             
-            Text("Create Your Account")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.white)
-            
-            Text("and Simplify Your\nWorkday")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.white)
-            
-            // Illustration placeholder
-            Image(systemName: "person.crop.circle.fill.badge.plus")
-                .font(.system(size: 60))
-                .foregroundStyle(.white.opacity(0.3))
-                .padding(.top, Spacing.md)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Create Your Account")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+                
+                Text("and Simplify Your Workday")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, Spacing.xl)
-        .padding(.top, 60)
-        .padding(.bottom, Spacing.lg)
+        .padding(.horizontal, 24)
+        .padding(.top, 50)
+        .padding(.bottom, 20)
     }
     
     private var formCard: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: Spacing.lg) {
+        ZStack {
+            Color.white
+                .ignoresSafeArea(edges: .bottom)
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
                 // Title
-                VStack(spacing: 4) {
+                VStack(spacing: 8) {
                     Text("Sign up")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(Color.textPrimary)
@@ -98,11 +98,65 @@ struct RegisterView: View {
                         .foregroundStyle(Color(hex: "#4ECDC4"))
                     }
                 }
-                .padding(.top, Spacing.xl)
+                .padding(.top, 24)
+                
+                // Display Name Field
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color.textSecondary)
+                            .frame(width: 20)
+                        
+                        TextField("Display name", text: $viewModel.displayName)
+                            .font(.system(size: 15))
+                            .autocapitalization(.words)
+                    }
+                    .padding(16)
+                    .background(Color.appInputBackground)
+                    .cornerRadius(12)
+                }
+                
+                // First Name and Last Name Row
+                HStack(spacing: 12) {
+                    // First Name Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.text.rectangle")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Color.textSecondary)
+                                .frame(width: 20)
+                            
+                            TextField("First name", text: $viewModel.firstName)
+                                .font(.system(size: 15))
+                                .autocapitalization(.words)
+                        }
+                        .padding(16)
+                        .background(Color.appInputBackground)
+                        .cornerRadius(12)
+                    }
+                    
+                    // Last Name Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.text.rectangle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Color.textSecondary)
+                                .frame(width: 20)
+                            
+                            TextField("Last name", text: $viewModel.lastName)
+                                .font(.system(size: 15))
+                                .autocapitalization(.words)
+                        }
+                        .padding(16)
+                        .background(Color.appInputBackground)
+                        .cornerRadius(12)
+                    }
+                }
                 
                 // Email Field
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack(spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
                         Image(systemName: "envelope")
                             .font(.system(size: 16))
                             .foregroundStyle(Color.textSecondary)
@@ -113,15 +167,14 @@ struct RegisterView: View {
                             .autocapitalization(.none)
                             .keyboardType(.emailAddress)
                     }
-                    .padding(Spacing.md)
+                    .padding(16)
                     .background(Color.appInputBackground)
                     .cornerRadius(12)
                 }
-                .padding(.top, Spacing.md)
                 
                 // Password Field
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack(spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
                         Image(systemName: "lock")
                             .font(.system(size: 16))
                             .foregroundStyle(Color.textSecondary)
@@ -141,14 +194,14 @@ struct RegisterView: View {
                                 .foregroundStyle(Color.textSecondary)
                         }
                     }
-                    .padding(Spacing.md)
+                    .padding(16)
                     .background(Color.appInputBackground)
                     .cornerRadius(12)
                 }
                 
                 // Confirm Password Field
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack(spacing: Spacing.sm) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 16))
                             .foregroundStyle(Color.textSecondary)
@@ -168,7 +221,7 @@ struct RegisterView: View {
                                 .foregroundStyle(Color.textSecondary)
                         }
                     }
-                    .padding(Spacing.md)
+                    .padding(16)
                     .background(Color.appInputBackground)
                     .cornerRadius(12)
                 }
@@ -176,7 +229,7 @@ struct RegisterView: View {
                 // Remember Me & Forgot Password
                 HStack {
                     Button(action: { rememberMe.toggle() }) {
-                        HStack(spacing: Spacing.xs) {
+                        HStack(spacing: 8) {
                             Image(systemName: rememberMe ? "checkmark.square.fill" : "square")
                                 .font(.system(size: 18))
                                 .foregroundStyle(rememberMe ? Color(hex: "#4ECDC4") : Color.textSecondary)
@@ -195,23 +248,24 @@ struct RegisterView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color(hex: "#4ECDC4"))
                 }
+                .padding(.top, 4)
                 
                 // Error Message
                 if let errorMessage = viewModel.errorMessage {
-                    HStack(spacing: Spacing.sm) {
+                    HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 14))
                         Text(errorMessage)
                             .font(.system(size: 13))
                     }
                     .foregroundStyle(Color.appDestructive)
-                    .padding(Spacing.sm)
+                    .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.appDestructive.opacity(0.1))
                     .cornerRadius(8)
                 }
                 
-                // Sign Up Button (changed from Login to match design)
+                // Sign Up Button
                 Button(action: {
                     Task {
                         await viewModel.register()
@@ -221,7 +275,7 @@ struct RegisterView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text("Login")
+                        Text("Sign Up")
                             .font(.system(size: 17, weight: .semibold))
                     }
                 }
@@ -241,9 +295,10 @@ struct RegisterView: View {
                 .cornerRadius(12)
                 .disabled(!viewModel.isFormValid || viewModel.isLoading)
                 .opacity(viewModel.isFormValid ? 1 : 0.6)
+                .padding(.top, 4)
                 
                 // Divider
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: 16) {
                     Rectangle()
                         .fill(Color.appDivider)
                         .frame(height: 1)
@@ -256,15 +311,15 @@ struct RegisterView: View {
                         .fill(Color.appDivider)
                         .frame(height: 1)
                 }
-                .padding(.vertical, Spacing.sm)
+                .padding(.vertical, 8)
                 
                 // Social Sign In Buttons
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: 16) {
                     // Apple Button
                     Button(action: {
                         // Handle Apple sign in
                     }) {
-                        HStack(spacing: Spacing.xs) {
+                        HStack(spacing: 8) {
                             Image(systemName: "apple.logo")
                                 .font(.system(size: 18))
                             Text("Apple")
@@ -283,7 +338,7 @@ struct RegisterView: View {
                             await viewModel.signUpWithGoogle()
                         }
                     }) {
-                        HStack(spacing: Spacing.xs) {
+                        HStack(spacing: 8) {
                             Image(systemName: "globe")
                                 .font(.system(size: 18))
                             Text("Google")
@@ -300,12 +355,13 @@ struct RegisterView: View {
                         )
                     }
                 }
-                .padding(.bottom, Spacing.xl)
+                .padding(.bottom, 32)
             }
-            .padding(.horizontal, Spacing.xl)
+            .padding(.horizontal, 24)
         }
-        .background(Color.white)
         .cornerRadius(32, corners: [.topLeft, .topRight])
+        .clipped()
+        }
     }
 }
 

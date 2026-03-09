@@ -70,8 +70,12 @@ struct LoginView: View {
     }
     
     private var formCard: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: Spacing.lg) {
+        ZStack {
+            Color.white
+                .ignoresSafeArea(edges: .bottom)
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: Spacing.lg) {
                 // Title
                 VStack(spacing: 4) {
                     Text("Login")
@@ -268,8 +272,9 @@ struct LoginView: View {
                 .padding(.bottom, Spacing.xl)
             }
             .padding(.horizontal, Spacing.xl)
-            .background(Color.white)
-            .cornerRadius(32, corners: [.topLeft, .topRight])
+        }
+        .cornerRadius(32, corners: [.topLeft, .topRight])
+        .clipped()
         }
     }
 }
