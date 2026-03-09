@@ -2,7 +2,7 @@
 //  HomeViewModel.swift
 //  ToDoList
 //
-//  Created on 2024.
+//  Created on 2026.
 //
 
 import Foundation
@@ -14,12 +14,22 @@ final class HomeViewModel {
     private let userId: String
     
     var tasks: [TaskItem] = []
+    var currentUser: User?
     var isLoading = false
     var errorMessage: String?
     
     init(databaseService: RealtimeDatabaseService = .shared, userId: String) {
         self.databaseService = databaseService
         self.userId = userId
+    }
+    
+    @MainActor
+    func loadUserProfile() async {
+        do {
+            currentUser = try await databaseService.fetchUser(userId: userId)
+        } catch {
+            errorMessage = "Failed to load user profile: \(error.localizedDescription)"
+        }
     }
     
     @MainActor

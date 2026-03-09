@@ -22,13 +22,10 @@ actor CloudinaryService {
     private let cloudName = "dn6rffrwk"
     private let apiKey = "344196553561727"
     private let apiSecret = "MbHFiTcNa__FPmA87l8Ey_Sqo4w"
-    private let uploadPreset = "todolist_unsigned" // Create this in Cloudinary Settings → Upload
+    private let uploadPreset = "todolist_unsigned"
     
     // MARK: - Upload Methods
-    
-    /// Upload an image to Cloudinary using unsigned upload
-    /// - Parameter image: The UIImage to upload
-    /// - Returns: The public URL of the uploaded image
+
     func uploadImage(_ image: UIImage) async throws -> String {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw CloudinaryError.invalidImage
@@ -240,7 +237,7 @@ enum CloudinaryError: LocalizedError {
 // MARK: - String SHA1 Extension
 
 extension String {
-    func sha1() -> String {
+    nonisolated func sha1() -> String {
         let data = Data(self.utf8)
         let hash = Insecure.SHA1.hash(data: data)
         return hash.map { String(format: "%02hhx", $0) }.joined()

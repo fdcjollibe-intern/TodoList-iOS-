@@ -21,44 +21,43 @@ struct AddTaskView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.appBackground.ignoresSafeArea()
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: Spacing.lg) {
-                        // Title Input
-                        titleSection
-                        
-                        // Description Input
-                        descriptionSection
-                        
-                        // Category Selection
-                        categorySection
-                        
-                        // Color Picker
-                        colorSection
-                        
-                        // Due Date
-                        dueDateSection
-                        
-                        // Collaborators
-                        collaboratorsSection
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.vertical, Spacing.md)
-                    .padding(.bottom, Spacing.xxl)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: Spacing.lg) {
+                    // Title Input
+                    titleSection
+                    
+                    // Category Selection
+                    categorySection
+                    
+                    // Priority Selection
+                    prioritySection
+                    
+                    // Description Input
+                    descriptionSection
+                    
+                    // Color Picker
+                    colorSection
+                    
+                    // Date and Time
+                    dateTimeSection
+                    
+                    // Collaborators
+                    collaboratorsSection
                 }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.lg)
             }
             .navigationTitle("New Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundStyle(Color.textPrimary)
                 }
                 
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Create") {
                         Task {
                             if await viewModel.createTask() {
@@ -67,9 +66,9 @@ struct AddTaskView: View {
                             }
                         }
                     }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(viewModel.canCreate ? Color.appPrimary : Color.textTertiary)
                     .disabled(!viewModel.canCreate)
-                    .font(Typography.bodyMedium)
-                    .foregroundStyle(viewModel.canCreate ? Color.appPrimary : Color.textSecondary)
                 }
             }
             .alert("Error", isPresented: Binding(
@@ -93,221 +92,261 @@ struct AddTaskView: View {
     // MARK: - View Components
     
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Title")
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Title Task")
                 .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(Color.textPrimary)
             
-            TextField("Enter task title...", text: $viewModel.title)
+            TextField("Add Task Name...", text: $viewModel.title)
                 .font(Typography.bodyRegular)
                 .padding(Spacing.md)
-                .background(Color.white)
-                .cornerRadius(12)
+                .background(Color.appBackground)
+                .cornerRadius(10)
         }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
     }
     
     private var descriptionSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Description (Optional)")
                 .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(Color.textPrimary)
             
-            TextField("Enter description...", text: $viewModel.description, axis: .vertical)
+            TextField("Add Description...", text: $viewModel.description, axis: .vertical)
                 .font(Typography.bodyRegular)
-                .lineLimit(3...6)
+                .lineLimit(3...5)
                 .padding(Spacing.md)
-                .background(Color.white)
-                .cornerRadius(12)
+                .background(Color.appBackground)
+                .cornerRadius(10)
         }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
     }
     
     private var categorySection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Category")
                 .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(Color.textPrimary)
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.sm) {
-                    // Add New Category Button
+            HStack(spacing: Spacing.md) {
+                // Personal Category
+                Button(action: {
+                    viewModel.selectedCategory = .personal
+                }) {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 14))
+                        Text("Personal")
+                            .font(Typography.bodyMedium)
+                    }
+                    .foregroundStyle(viewModel.selectedCategory == .personal ? .white : Color.textPrimary)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    .frame(maxWidth: .infinity)
+                    .background(viewModel.selectedCategory == .personal ? Color.appPrimary : Color.appBackground)
+                    .cornerRadius(10)
+                }
+                
+                // Teams Category
+                Button(action: {
+                    viewModel.selectedCategory = .work
+                }) {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 14))
+                        Text("Teams")
+                            .font(Typography.bodyMedium)
+                    }
+                    .foregroundStyle(viewModel.selectedCategory == .work ? .white : Color.textPrimary)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    .frame(maxWidth: .infinity)
+                    .background(viewModel.selectedCategory == .work ? Color.appPrimary : Color.appBackground)
+                    .cornerRadius(10)
+                }
+            }
+        }
+    }
+    
+    private var prioritySection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Priority")
+                .font(Typography.bodyMedium)
+                .foregroundStyle(Color.textPrimary)
+            
+            HStack(spacing: Spacing.md) {
+                ForEach(TaskPriority.allCases, id: \.self) { priority in
                     Button(action: {
-                        // Coming soon
+                        viewModel.selectedPriority = priority
                     }) {
                         HStack(spacing: Spacing.xs) {
-                            Image(systemName: "plus.circle.fill")
+                            Image(systemName: priority.icon)
                                 .font(.system(size: 14))
-                            Text("Add New")
-                                .font(Typography.bodyRegular)
+                            Text(priority.displayName)
+                                .font(Typography.bodyMedium)
                         }
-                        .foregroundStyle(Color.appPrimary)
+                        .foregroundStyle(viewModel.selectedPriority == priority ? .white : Color.textPrimary)
                         .padding(.horizontal, Spacing.md)
                         .padding(.vertical, Spacing.sm)
-                        .background(Color.appPrimary.opacity(0.1))
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.appPrimary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [3]))
-                        )
-                    }
-                    
-                    ForEach(TaskCategory.allCases, id: \.self) { category in
-                        CategoryButton(
-                            category: category,
-                            isSelected: viewModel.selectedCategory == category
-                        ) {
-                            viewModel.selectedCategory = category
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
-    }
-    
-    private var colorSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Color")
-                .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.md) {
-                    ForEach(ColorPalette.taskColors, id: \.self) { color in
-                        ColorCircle(
-                            color: color,
-                            isSelected: viewModel.selectedColor == color
-                        ) {
-                            viewModel.selectedColor = color
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
-    }
-    
-    private var dueDateSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack {
-                Text("Due Date")
-                    .font(Typography.bodyMedium)
-                    .foregroundStyle(Color.textSecondary)
-                
-                Spacer()
-                
-                Toggle("", isOn: $viewModel.hasDueDate)
-                    .labelsHidden()
-                    .tint(Color.appPrimary)
-            }
-            
-            if viewModel.hasDueDate {
-                DatePicker(
-                    "Select date",
-                    selection: $viewModel.dueDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.graphical)
-                .tint(Color.appPrimary)
-                .padding(.top, Spacing.xs)
-            }
-        }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
-    }
-    
-    private var collaboratorsSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Collaborators (Optional)")
-                .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
-            
-            // Existing Collaborators
-            if !viewModel.collaborators.isEmpty {
-                VStack(spacing: Spacing.sm) {
-                    ForEach(viewModel.collaborators, id: \.self) { email in
-                        HStack(spacing: Spacing.sm) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Color.appPrimary)
-                            
-                            Text(email)
-                                .font(Typography.bodyRegular)
-                                .foregroundStyle(Color.textPrimary)
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                viewModel.removeCollaborator(email: email)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(Color.textSecondary)
-                            }
-                        }
-                        .padding(Spacing.sm)
-                        .background(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .background(viewModel.selectedPriority == priority ? priority.color : Color.appBackground)
                         .cornerRadius(10)
                     }
                 }
             }
+        }
+    }
+    
+    private var colorSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Color")
+                .font(Typography.bodyMedium)
+                .foregroundStyle(Color.textPrimary)
             
-            // Add Collaborator Field
-            HStack(spacing: Spacing.sm) {
-                Image(systemName: "envelope.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(Color.textSecondary)
-                
-                TextField("Enter email address...", text: $viewModel.collaboratorEmail)
-                    .font(Typography.bodyRegular)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                
-                if !viewModel.collaboratorEmail.isEmpty {
-                    Button(action: {
-                        viewModel.addCollaborator()
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.appPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    ForEach(ColorPalette.taskColors, id: \.self) { color in
+                        Circle()
+                            .fill(Color(hex: color))
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(viewModel.selectedColor == color ? Color.appPrimary : Color.clear, lineWidth: 3)
+                            )
+                            .overlay(
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .opacity(viewModel.selectedColor == color ? 1 : 0)
+                            )
+                            .onTapGesture {
+                                viewModel.selectedColor = color
+                            }
                     }
                 }
             }
-            .padding(Spacing.md)
-            .background(Color.white)
-            .cornerRadius(12)
-            
-            // Info Text
-            HStack(spacing: 4) {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 12))
-                Text("Up to 3 collaborators on free plan")
-                    .font(.system(size: 12))
-            }
-            .foregroundStyle(Color.textSecondary)
         }
-        .padding(Spacing.lg)
-        .background(Color.appSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+    }
+    
+    private var dateTimeSection: some View {
+        HStack(spacing: Spacing.md) {
+            // Date Section
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Date")
+                    .font(Typography.bodyMedium)
+                    .foregroundStyle(Color.textPrimary)
+                
+                HStack {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.textSecondary)
+                    
+                    DatePicker(
+                        "",
+                        selection: $viewModel.dueDate,
+                        displayedComponents: [.date]
+                    )
+                    .labelsHidden()
+                    .tint(Color.appPrimary)
+                }
+                .padding(Spacing.sm)
+                .frame(maxWidth: .infinity)
+                .background(Color.appBackground)
+                .cornerRadius(10)
+            }
+            
+            // Time Section
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Time")
+                    .font(Typography.bodyMedium)
+                    .foregroundStyle(Color.textPrimary)
+                
+                HStack {
+                    Image(systemName: "clock")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.textSecondary)
+                    
+                    DatePicker(
+                        "",
+                        selection: $viewModel.dueDate,
+                        displayedComponents: [.hourAndMinute]
+                    )
+                    .labelsHidden()
+                    .tint(Color.appPrimary)
+                }
+                .padding(Spacing.sm)
+                .frame(maxWidth: .infinity)
+                .background(Color.appBackground)
+                .cornerRadius(10)
+            }
+        }
+    }
+    
+    private var collaboratorsSection: some View {
+        Group {
+            if viewModel.selectedCategory == .work {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    HStack {
+                        Text("Collaborators")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.textPrimary)
+                        
+                        Spacer()
+                        
+                        Text("Up to 3 collaborators")
+                            .font(Typography.caption)
+                            .foregroundStyle(Color.textTertiary)
+                    }
+                    
+                    // Email Input
+                    HStack(spacing: Spacing.sm) {
+                        TextField("Enter email address...", text: $viewModel.collaboratorEmail)
+                            .font(Typography.bodyRegular)
+                            .padding(Spacing.md)
+                            .background(Color.appBackground)
+                            .cornerRadius(10)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+                        
+                        Button(action: {
+                            viewModel.addCollaborator()
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(viewModel.collaboratorEmail.isEmpty ? Color.textTertiary : Color.appPrimary)
+                        }
+                        .disabled(viewModel.collaboratorEmail.isEmpty)
+                    }
+                    
+                    // Collaborators List
+                    if !viewModel.collaborators.isEmpty {
+                        VStack(spacing: Spacing.sm) {
+                            ForEach(viewModel.collaborators, id: \.self) { email in
+                                HStack {
+                                    CollaboratorAvatar(email: email, size: 28)
+                                    
+                                    Text(email)
+                                        .font(Typography.bodyRegular)
+                                        .foregroundStyle(Color.textPrimary)
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        viewModel.removeCollaborator(email: email)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundStyle(Color.textTertiary)
+                                    }
+                                }
+                                .padding(Spacing.md)
+                                .background(Color.appBackground)
+                                .cornerRadius(10)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -369,6 +408,7 @@ final class AddTaskViewModel {
     var title = ""
     var description = ""
     var selectedCategory: TaskCategory = .personal
+    var selectedPriority: TaskPriority = .medium
     var selectedColor = ColorPalette.taskColors[0]
     var hasDueDate = false
     var dueDate = Date()
@@ -430,8 +470,8 @@ final class AddTaskViewModel {
             description: description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
             category: selectedCategory,
             color: selectedColor,
-            subtasks: [],
-            dueDate: hasDueDate ? dueDate.timeIntervalSince1970 : nil,
+            priority: selectedPriority,
+            dueDate: dueDate.timeIntervalSince1970,
             collaborators: collaborators,
             notifyOnChanges: true
         )

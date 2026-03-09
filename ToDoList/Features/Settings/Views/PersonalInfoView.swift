@@ -108,16 +108,22 @@ struct PersonalInfoView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showImagePicker) {
             ImagePickerView(image: $viewModel.selectedImage)
-                .onChange(of: viewModel.selectedImage) { _, _ in
-                    viewModel.onImageSelected()
-                }
         }
         .sheet(isPresented: $viewModel.showImageCropper) {
             ImageCropperView(
                 image: $viewModel.selectedImage,
                 croppedImage: $viewModel.croppedImage
             )
-            .onChange(of: viewModel.croppedImage) { _, _ in
+        }
+        .onChange(of: viewModel.selectedImage) { oldValue, newValue in
+            if oldValue == nil && newValue != nil {
+                print("🖼️ selectedImage changed, calling onImageSelected()")
+                viewModel.onImageSelected()
+            }
+        }
+        .onChange(of: viewModel.croppedImage) { oldValue, newValue in
+            if oldValue == nil && newValue != nil {
+                print("✂️ croppedImage changed, calling onImageCropped()")
                 viewModel.onImageCropped()
             }
         }
@@ -137,7 +143,7 @@ struct PersonalInfoView: View {
         }
         .overlay {
             if viewModel.isLoading {
-                LoadingOverlay()
+                LoadingOverlay(message: "Uploading photo...")
             }
         }
         .onAppear {

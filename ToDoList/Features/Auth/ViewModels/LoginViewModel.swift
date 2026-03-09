@@ -61,6 +61,11 @@ final class LoginViewModel {
                 at: "\(DBPath.users)/\(userId)"
             )
             
+            // Save login state to UserDefaults
+            UserDefaults.standard.set(true, forKey: "isLoggedIn")
+            UserDefaults.standard.set(userId, forKey: "userId")
+            UserDefaults.standard.synchronize()
+            
             isAuthenticated = true
             isLoading = false
         } catch {
@@ -106,6 +111,11 @@ final class LoginViewModel {
                 ["lastLoginAt": timestamp],
                 at: "\(DBPath.users)/\(userId)"
             )
+            
+            // Save login state to UserDefaults
+            UserDefaults.standard.set(true, forKey: "isLoggedIn")
+            UserDefaults.standard.set(userId, forKey: "userId")
+            UserDefaults.standard.synchronize()
             
             isAuthenticated = true
             isLoading = false

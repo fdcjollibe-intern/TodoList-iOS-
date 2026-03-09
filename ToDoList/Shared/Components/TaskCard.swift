@@ -35,31 +35,9 @@ struct TaskCard: View {
                         .multilineTextAlignment(.leading)
                 }
                 
-                // Subtasks
-                if !task.subtasks.isEmpty {
-                    VStack(spacing: Spacing.sm) {
-                        ForEach(task.subtasks.prefix(2)) { subtask in
-                            HStack(spacing: Spacing.sm) {
-                                Image(systemName: subtask.isCompleted ? "checkmark.square.fill" : "square")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(subtask.isCompleted ? Color.appPrimary : Color.textTertiary)
-                                
-                                Text(subtask.title)
-                                    .font(Typography.bodyRegular)
-                                    .foregroundStyle(Color.textSecondary)
-                                    .strikethrough(subtask.isCompleted)
-                                
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(.top, Spacing.xs)
-                }
-                
                 Spacer()
                 
-                // Bottom Info
-                HStack(spacing: Spacing.lg) {
+                HStack(alignment: .bottom, spacing: Spacing.sm) {
                     // Date
                     if let dueDate = task.dueDate {
                         HStack(spacing: Spacing.xs) {
@@ -272,8 +250,7 @@ struct CardButtonStyle: ButtonStyle {
                 title: "Favorite UX Book",
                 description: "Lean UX: Applying Lean Principles to Improve User Experience.",
                 category: .design,
-                color: "#DDD6FE",
-                subtasks: []
+                color: "#DDD6FE"
             ),
             onTap: {}
         )
@@ -284,11 +261,7 @@ struct CardButtonStyle: ButtonStyle {
                 title: "2024 Fashion Trend",
                 description: nil,
                 category: .lifestyle,
-                color: "#FED7D7",
-                subtasks: [
-                    Subtask(title: "Men's Casual Dress", isCompleted: false),
-                    Subtask(title: "Summer Styles", isCompleted: false)
-                ]
+                color: "#FED7D7"
             ),
             onTap: {}
         )

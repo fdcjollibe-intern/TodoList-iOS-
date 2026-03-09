@@ -159,21 +159,28 @@ class SettingsViewModel {
     
     /// Upload profile photo to Cloudinary
     func uploadProfilePhoto() async {
-        guard let image = croppedImage else { return }
+        guard let image = croppedImage else {
+            print("❌ No cropped image available")
+            errorMessage = "No image to upload"
+            return
+        }
         
+        print("🚀 Starting upload process...")
         isLoading = true
         errorMessage = nil
+        successMessage = nil
         
         do {
-            print("Starting image upload to Cloudinary...")
-            //let imageUrl = try await CloudinaryService.shared.uploadImage(image)
-            let imageUrl = try await CloudinaryService.shared.uploadImageSigned(image)
-            print("Image uploaded successfully: \(imageUrl)")
+            print("📤 Uploading image to Cloudinary...")
+            let imageUrl = try await CloudinaryService.shared.uploadImage(image)
+            print("✅ Image uploaded successfully: \(imageUrl)")
             
             profileImageUrl = imageUrl
             
             // Update user profile
+            print("💾 Updating user profile...")
             await updatePersonalInfo()
+            print("✅ Profile updated successfully")
             
             // Clear temporary images
             selectedImage = nil
@@ -181,11 +188,11 @@ class SettingsViewModel {
             
             isLoading = false
         } catch let error as CloudinaryError {
-            print("Cloudinary error: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+            print("❌ Cloudinary error: \(error.localizedDescription)")
+            errorMessage = "Upload failed: \(error.localizedDescription)"
             isLoading = false
         } catch {
-            print("Upload error: \(error)")
+            print("❌ Upload error: \(error)")
             errorMessage = "Failed to upload image: \(error.localizedDescription)"
             isLoading = false
         }
@@ -281,17 +288,25 @@ class SettingsViewModel {
     
     /// Handle image selection
     func onImageSelected() {
+        print("🖼️ Image selected, selectedImage: \(selectedImage != nil)")
         if selectedImage != nil {
+            print("✅ Opening image cropper...")
             showImageCropper = true
+        } else {
+            print("⚠️ No selected image available")
         }
     }
     
     /// Handle image cropped
     func onImageCropped() {
+        print("🖼️ Image cropped, starting upload...")
         if croppedImage != nil {
+            showImageCropper = false
             Task {
                 await uploadProfilePhoto()
             }
+        } else {
+            print("⚠️ No cropped image available")
         }
     }
     

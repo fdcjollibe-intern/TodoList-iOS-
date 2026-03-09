@@ -5,24 +5,38 @@
 //  Created by Jollibe Dablo - INTERN on 3/6/26.
 //
 
-
-
 import SwiftUI
 import FirebaseAuth
 
 @Observable
 final class AuthStateManager {
     var isAuthenticated: Bool = false
+    var isLoading: Bool = true
     private var authStateListenerHandle: AuthStateDidChangeListenerHandle?
     
     init() {
-        // Check initial auth state
-        isAuthenticated = Auth.auth().currentUser != nil
+        // Check initial auth state from UserDefaults and Firebase
+        let isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+        isAuthenticated = isLoggedIn && Auth.auth().currentUser != nil
         
         // Listen for auth state changes
         authStateListenerHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isAuthenticated = user != nil
+                // Update UserDefaults when auth state changes
+                if user == nil {
+                    UserDefaults.standard.set(false, forKey: "isLoggedIn")
+                    UserDefaults.standard.removeObject(forKey: "userId")
+                    UserDefaults.standard.synchronize()
+                }
+            }
+        }
+        
+        // Show splash screen
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await MainActor.run {
+                self.isLoading = false
             }
         }
     }
@@ -39,15 +53,16 @@ struct AuthCoordinator: View {
     
     var body: some View {
         Group {
-            if authStateManager.isAuthenticated {
-                HomeView()
+            if authStateManager.isLoading {
+                SplashScreenView()
+            } else if authStateManager.isAuthenticated {
+                MainTabView()
             } else {
                 LoginView()
             }
         }
     }
 }
-
 
 #Preview {
     AuthCoordinator()

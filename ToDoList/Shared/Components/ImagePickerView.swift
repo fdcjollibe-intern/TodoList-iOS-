@@ -38,14 +38,29 @@ struct ImagePickerView: UIViewControllerRepresentable {
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             parent.dismiss()
             
-            guard let provider = results.first?.itemProvider else { return }
+            guard let provider = results.first?.itemProvider else {
+                print("⚠️ No item provider available")
+                return
+            }
             
             if provider.canLoadObject(ofClass: UIImage.self) {
-                provider.loadObject(ofClass: UIImage.self) { image, _ in
+                print("📸 Loading image from picker...")
+                provider.loadObject(ofClass: UIImage.self) { image, error in
                     DispatchQueue.main.async {
-                        self.parent.image = image as? UIImage
+                        if let error = error {
+                            print("❌ Error loading image: \(error.localizedDescription)")
+                            return
+                        }
+                        if let uiImage = image as? UIImage {
+                            print("✅ Image loaded successfully: \(uiImage.size)")
+                            self.parent.image = uiImage
+                        } else {
+                            print("❌ Failed to cast image to UIImage")
+                        }
                     }
                 }
+            } else {
+                print("⚠️ Provider cannot load UIImage")
             }
         }
     }
@@ -148,33 +163,65 @@ struct ImageCropperView: View {
     }
     
     private func cropImage() {
-        guard let image = image else { return }
+        guard let image = image else {
+            print("❌ No image to crop")
+            return
+        }
         
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 500, height: 500))
+        print("✂️ Cropping image with scale: \(scale), offset: \(offset)")
+        
+        let outputSize: CGFloat = 500
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: outputSize, height: outputSize))
+        
         let croppedImg = renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: 500, height: 500)
+            let rect = CGRect(x: 0, y: 0, width: outputSize, height: outputSize)
             UIBezierPath(ovalIn: rect).addClip()
             
             // Calculate the image rect based on scale and offset
             let imageSize = image.size
             let aspectRatio = imageSize.width / imageSize.height
             
+            // Base size to fit in the crop circle (250pt visible area, but we render at 500pt)
+            let renderScale: CGFloat = 2.0 // 500pt output / 250pt visible
             var drawRect = CGRect.zero
+            
             if aspectRatio > 1 {
-                // Landscape
-                let height: CGFloat = 500
+                // Landscape: fit height, center width
+                let height = outputSize
                 let width = height * aspectRatio
-                drawRect = CGRect(x: -(width - 500) / 2, y: 0, width: width, height: height)
+                drawRect = CGRect(
+                    x: -(width - outputSize) / 2,
+                    y: 0,
+                    width: width,
+                    height: height
+                )
             } else {
-                // Portrait
-                let width: CGFloat = 500
+                // Portrait: fit width, center height
+                let width = outputSize
                 let height = width / aspectRatio
-                drawRect = CGRect(x: 0, y: -(height - 500) / 2, width: width, height: height)
+                drawRect = CGRect(
+                    x: 0,
+                    y: -(height - outputSize) / 2,
+                    width: width,
+                    height: height
+                )
             }
+            
+            // Apply user's scale and offset transformations
+            let centerX = outputSize / 2
+            let centerY = outputSize / 2
+            
+            context.cgContext.translateBy(x: centerX, y: centerY)
+            context.cgContext.scaleBy(x: scale, y: scale)
+            context.cgContext.translateBy(
+                x: -centerX + (offset.width * renderScale),
+                y: -centerY + (offset.height * renderScale)
+            )
             
             image.draw(in: drawRect)
         }
         
+        print("✅ Image cropped successfully")
         croppedImage = croppedImg
         dismiss()
     }

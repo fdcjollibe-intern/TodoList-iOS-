@@ -6,119 +6,55 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct CalendarView: View {
     // MARK: - Properties
     
     @State private var selectedDate = Date()
     @State private var selectedTask: TaskItem?
+    @State private var viewModel: CalendarViewModel?
+    @State private var showMonthPicker = false
     
-    // Mock data for preview - in production, fetch from database
-    private let mockTasks: [TaskItem] = [
-        TaskItem(
-            userId: "test",
-            title: "Favorite UX Book",
-            description: "Lean UX: Applying Lean Principles to Improve User Experience.",
-            category: .design,
-            color: "#DDD6FE",
-            subtasks: [],
-            dueDate: Date().timeIntervalSince1970
-        ),
-        TaskItem(
-            userId: "test",
-            title: "Webflow Web Design",
-            description: nil,
-            category: .design,
-            color: "#FEF3C7",
-            subtasks: [
-                Subtask(title: "Follow the modern Styles", isCompleted: false),
-                Subtask(title: "10x Rules", isCompleted: false)
-            ],
-            dueDate: Date().timeIntervalSince1970 + 86400 * 7
-        ),
-        TaskItem(
-            userId: "test",
-            title: "Smart Home UX/UI Project",
-            description: nil,
-            category: .design,
-            color: "#DBEAFE",
-            subtasks: [
-                Subtask(title: "Interview with Stake Holders", isCompleted: false),
-                Subtask(title: "UX Research", isCompleted: false)
-            ],
-            dueDate: Date().timeIntervalSince1970 + 86400 * 3
-        )
-    ]
+    private var currentUser: FirebaseAuth.User? {
+        Auth.auth().currentUser
+    }
     
     // MARK: - Body
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header with date selector
             headerSection
             
-            // Calendar
-            DatePicker(
-                "Select Date",
-                selection: $selectedDate,
-                displayedComponents: [.date]
-            )
-            .datePickerStyle(.graphical)
-            .tint(Color.appPrimary)
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
-            .background(Color.appSurface)
-            .cornerRadius(16)
-            .padding(.horizontal, Spacing.xl)
+            // Horizontal Date Picker
+            dateScrollSection
             
-            // Tasks for selected date
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                HStack {
-                    Text("Tasks for \(formattedDate)")
-                        .font(Typography.title3)
-                        .foregroundStyle(Color.textPrimary)
-                    
-                    Spacer()
-                    
-                    Text("\(filteredTasks.count)")
-                        .font(Typography.bodyMedium)
-                        .foregroundStyle(Color.textSecondary)
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.vertical, Spacing.xs)
-                        .background(Color.appPrimary.opacity(0.1))
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, Spacing.xl)
-                .padding(.top, Spacing.lg)
-                
-                // Task List
-                if filteredTasks.isEmpty {
-                    EmptyStateView(
-                        icon: "calendar.badge.exclamationmark",
-                        title: "No tasks scheduled",
-                        subtitle: "No tasks are scheduled for this date"
-                    )
-                    .padding(.top, Spacing.xxl)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: Spacing.md) {
-                            ForEach(filteredTasks) { task in
-                                TaskListRow(task: task) {
-                                    selectedTask = task
-                                }
-                            }
-                        }
-                        .padding(.horizontal, Spacing.xl)
-                        .padding(.bottom, Spacing.xl)
-                    }
-                }
-            }
+            // Task count
+            taskCountSection
             
-            Spacer()
+            // Timeline
+            timelineSection
         }
         .background(Color.appBackground)
         .navigationDestination(item: $selectedTask) { task in
             TaskDetailView(task: task)
+        }
+        .onChange(of: selectedTask) { oldValue, newValue in
+            if oldValue != nil && newValue == nil {
+                Task {
+                    await viewModel?.loadTasks()
+                }
+            }
+        }
+        .task {
+            if viewModel == nil, let userId = currentUser?.uid {
+                viewModel = CalendarViewModel(userId: userId)
+                await viewModel?.loadTasks()
+            }
+        }
+        .refreshable {
+            await viewModel?.loadTasks()
         }
     }
     
@@ -126,121 +62,336 @@ struct CalendarView: View {
     
     private var headerSection: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Calendar")
-                    .font(Typography.title2)
+            Button(action: {
+                // Back action if needed
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20))
                     .foregroundStyle(Color.textPrimary)
-                
-                Text("Schedule & Tasks")
-                    .font(Typography.caption)
-                    .foregroundStyle(Color.textSecondary)
             }
             
             Spacer()
+            
+            Text("Schedule")
+                .font(Typography.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.textPrimary)
+            
+            Spacer()
+            
+            Button(action: {
+                // Menu action
+            }) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.textPrimary)
+            }
         }
-        .padding(.horizontal, Spacing.xl)
-        .padding(.top, Spacing.md)
-        .padding(.bottom, Spacing.lg)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.md)
+    }
+    
+    private var dateScrollSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Month/Year selector
+            Button(action: {
+                showMonthPicker.toggle()
+            }) {
+                HStack {
+                    Text(formattedMonthYear)
+                        .font(Typography.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.textPrimary)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.textPrimary)
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            
+            // Horizontal date scroll
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(dateRange, id: \.self) { date in
+                            DateButton(
+                                date: date,
+                                isSelected: Calendar.current.isDate(date, inSameDayAs: selectedDate),
+                                action: {
+                                    withAnimation {
+                                        selectedDate = date
+                                    }
+                                }
+                            )
+                            .id(date)
+                        }
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                }
+                .onAppear {
+                    proxy.scrollTo(selectedDate, anchor: .center)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.md)
+    }
+    
+    private var taskCountSection: some View {
+        HStack {
+            Text("you have total \(filteredTasks.count) tasks today")
+                .font(Typography.caption)
+                .foregroundStyle(Color.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.bottom, Spacing.md)
+    }
+    
+    private var timelineSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Timeline")
+                .font(Typography.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.textPrimary)
+                .padding(.horizontal, Spacing.lg)
+            
+            if filteredTasks.isEmpty {
+                EmptyStateView(
+                    icon: "calendar.badge.exclamationmark",
+                    title: "No tasks scheduled",
+                    subtitle: "No tasks are scheduled for this date"
+                )
+                .padding(.top, Spacing.xxl)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(timeSlots, id: \.self) { timeSlot in
+                            TimelineRow(
+                                timeSlot: timeSlot,
+                                tasks: tasksForTimeSlot(timeSlot),
+                                onTaskTap: { task in
+                                    selectedTask = task
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.bottom, Spacing.xl)
+                }
+            }
+        }
     }
     
     // MARK: - Computed Properties
     
     private var filteredTasks: [TaskItem] {
         let calendar = Calendar.current
-        return mockTasks.filter { task in
+        let tasks = viewModel?.tasks ?? []
+        return tasks.filter { task in
             guard let dueDate = task.dueDate else { return false }
             let taskDate = Date(timeIntervalSince1970: dueDate)
             return calendar.isDate(taskDate, inSameDayAs: selectedDate)
+        }.sorted { $0.dueDate ?? 0 < $1.dueDate ?? 0 }
+    }
+    
+    private var dateRange: [Date] {
+        let calendar = Calendar.current
+        let today = selectedDate
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today))!
+        let range = calendar.range(of: .day, in: .month, for: startOfMonth)!
+        
+        return range.compactMap { day in
+            calendar.date(byAdding: .day, value: day - 1, to: startOfMonth)
         }
     }
     
-    private var formattedDate: String {
+    private var timeSlots: [Date] {
+        let calendar = Calendar.current
+        var slots: [Date] = []
+        
+        for hour in 9...23 {
+            if let timeSlot = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: selectedDate) {
+                slots.append(timeSlot)
+            }
+        }
+        
+        return slots
+    }
+    
+    private func tasksForTimeSlot(_ timeSlot: Date) -> [TaskItem] {
+        let calendar = Calendar.current
+        return filteredTasks.filter { task in
+            guard let dueDate = task.dueDate else { return false }
+            let taskDate = Date(timeIntervalSince1970: dueDate)
+            let taskHour = calendar.component(.hour, from: taskDate)
+            let slotHour = calendar.component(.hour, from: timeSlot)
+            return taskHour == slotHour
+        }
+    }
+    
+    private var formattedMonthYear: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
+        formatter.dateFormat = "dd MMMM yyyy"
         return formatter.string(from: selectedDate)
     }
 }
 
-// MARK: - Task List Row
+// MARK: - Date Button
 
-struct TaskListRow: View {
-    let task: TaskItem
+private struct DateButton: View {
+    let date: Date
+    let isSelected: Bool
     let action: () -> Void
-    
-    init(task: TaskItem, action: @escaping () -> Void) {
-        self.task = task
-        self.action = action
-    }
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Spacing.md) {
-                // Color indicator
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(hex: task.color))
-                    .frame(width: 4, height: 60)
-                
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    // Title
-                    Text(task.title)
-                        .font(Typography.bodyMedium)
-                        .foregroundStyle(Color.textPrimary)
-                        .lineLimit(2)
-                    
-                    // Category and Time
-                    HStack(spacing: Spacing.sm) {
-                        Text(task.category.displayName)
-                            .font(Typography.caption)
-                            .foregroundStyle(Color.textSecondary)
-                            .padding(.horizontal, Spacing.sm)
-                            .padding(.vertical, 2)
-                            .background(Color(hex: task.color).opacity(0.2))
-                            .cornerRadius(6)
-                        
-                        if let dueDate = task.dueDate {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                    .font(.system(size: 10))
-                                Text(formatTime(dueDate))
-                                    .font(Typography.caption)
-                            }
-                            .foregroundStyle(Color.textTertiary)
+            VStack(spacing: 4) {
+                Text(dayNumber)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(dayName)
+                    .font(.system(size: 12))
+            }
+            .foregroundStyle(isSelected ? .white : Color.textPrimary)
+            .frame(width: 50, height: 70)
+            .background(isSelected ? Color.appPrimary : Color.white)
+            .cornerRadius(12)
+        }
+    }
+    
+    private var dayNumber: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd"
+        return formatter.string(from: date)
+    }
+    
+    private var dayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Timeline Row
+
+private struct TimelineRow: View {
+    let timeSlot: Date
+    let tasks: [TaskItem]
+    let onTaskTap: (TaskItem) -> Void
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: Spacing.md) {
+            // Time label
+            Text(formattedTime)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.textSecondary)
+                .frame(width: 70, alignment: .leading)
+            
+            // Tasks or empty space
+            if tasks.isEmpty {
+                Spacer()
+                    .frame(height: 44)
+            } else {
+                VStack(spacing: Spacing.sm) {
+                    ForEach(tasks) { task in
+                        TimelineTaskCard(task: task) {
+                            onTaskTap(task)
                         }
                     }
-                    
-                    // Progress if has subtasks
-                    if !task.subtasks.isEmpty {
-                        HStack(spacing: Spacing.xs) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(Color.appSuccess)
-                            
-                            Text("\(task.completedSubtasksCount)/\(task.totalSubtasksCount) completed")
-                                .font(Typography.caption)
-                                .foregroundStyle(Color.textSecondary)
+                }
+            }
+        }
+    }
+    
+    private var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "hh:mm a"
+        return formatter.string(from: timeSlot)
+    }
+}
+
+// MARK: - Timeline Task Card
+
+private struct TimelineTaskCard: View {
+    let task: TaskItem
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.sm) {
+                // Collaborator avatars
+                if !task.collaborators.isEmpty {
+                    HStack(spacing: -8) {
+                        ForEach(task.collaborators.prefix(2), id: \.self) { email in
+                            CollaboratorAvatar(email: email, size: 32)
+                        }
+                        
+                        if task.collaborators.count > 2 {
+                            Circle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Text("+\(task.collaborators.count - 2)")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(Color.textPrimary)
+                                )
                         }
                     }
                 }
                 
-                Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                    
+                    if !task.isCompleted {
+                        Text("0%")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
                 
-                // Completion status
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24))
-                    .foregroundStyle(task.isCompleted ? Color.appSuccess : Color.textTertiary)
+                Spacer()
             }
-            .padding(Spacing.md)
-            .background(Color.appSurface)
-            .cornerRadius(12)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .background(Color(hex: task.color))
+            .cornerRadius(16)
         }
         .buttonStyle(.plain)
     }
+}
+
+// MARK: - Calendar ViewModel
+
+import Observation
+
+@Observable
+final class CalendarViewModel {
+    private let databaseService: RealtimeDatabaseService
+    private let userId: String
     
-    private func formatTime(_ timestamp: TimeInterval) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: date)
+    var tasks: [TaskItem] = []
+    var isLoading = false
+    var errorMessage: String?
+    
+    init(databaseService: RealtimeDatabaseService = .shared, userId: String) {
+        self.databaseService = databaseService
+        self.userId = userId
+    }
+    
+    @MainActor
+    func loadTasks() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            tasks = try await databaseService.fetchTasks(userId: userId)
+        } catch {
+            errorMessage = "Failed to load tasks: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
     }
 }
 

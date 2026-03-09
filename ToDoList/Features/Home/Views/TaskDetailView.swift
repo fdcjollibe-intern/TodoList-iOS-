@@ -13,20 +13,12 @@ struct TaskDetailView: View {
     @State private var viewModel: TaskViewModel
     @Environment(\.dismiss) private var dismiss
     
-    @State private var isEditingTitle = false
-    @State private var editingSubtaskId: String?
+    @State private var isEditMode = false
     @State private var showColorPicker = false
     @State private var showDatePicker = false
     @State private var showDeleteConfirmation = false
-    @State private var newSubtaskTitle = ""
-    @State private var selectedTab: DetailTab = .general
     @State private var collaboratorEmail = ""
     @State private var showPremiumBanner = false
-    
-    enum DetailTab: String, CaseIterable {
-        case general = "General"
-        case tasks = "Tasks"
-    }
     
     // MARK: - Init
     
@@ -47,21 +39,28 @@ struct TaskDetailView: View {
                     .padding(.horizontal, Spacing.lg)
                     .padding(.top, Spacing.lg)
                 
-                // Tab Picker
-                tabPicker
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.top, Spacing.md)
-                
-                // Tab Content
+                // Content
                 ScrollView {
                     VStack(spacing: Spacing.xl) {
-                        if selectedTab == .general {
-                            generalTabContent
-                        } else {
-                            tasksTabContent
-                        }
+                        // Description Section
+                        descriptionSection
                         
-                        // Delete Button (shown in both tabs)
+                        // Category & Priority Section
+                        categoryPrioritySection
+                        
+                        // Color Section
+                        colorSection
+                        
+                        // Due Date Section
+                        dueDateSection
+                        
+                        // Notification Toggle
+                        notificationSection
+                        
+                        // Collaborators Section
+                        collaboratorsSection
+                        
+                        // Delete Button
                         deleteButton
                         
                         Spacer(minLength: Spacing.xxl)
@@ -81,16 +80,18 @@ struct TaskDetailView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(action: { 
-                    Task {
-                        await viewModel.updateTask()
-                        dismiss()
+                    if isEditMode {
+                        Task {
+                            await viewModel.updateTask()
+                        }
                     }
+                    isEditMode.toggle()
                 }) {
-                    Text("Save")
+                    Text(isEditMode ? "Done" : "Edit")
                         .font(Typography.bodyMedium)
                         .foregroundStyle(Color.appPrimary)
                 }
-                .disabled(!viewModel.canSave)
+                .disabled(isEditMode && !viewModel.canSave)
             }
         }
         .sheet(isPresented: $showColorPicker) {
@@ -119,61 +120,10 @@ struct TaskDetailView: View {
     
     // MARK: - View Components
     
-    private var tabPicker: some View {
-        HStack(spacing: 0) {
-            ForEach(DetailTab.allCases, id: \.self) { tab in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = tab
-                    }
-                }) {
-                    Text(tab.rawValue)
-                        .font(Typography.bodyMedium)
-                        .foregroundStyle(selectedTab == tab ? Color.appPrimary : Color.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Spacing.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(selectedTab == tab ? Color.appPrimary.opacity(0.1) : Color.clear)
-                        )
-                }
-            }
-        }
-        .padding(4)
-        .background(Color.appSurface)
-        .cornerRadius(12)
-    }
-    
-    private var generalTabContent: some View {
-        VStack(spacing: Spacing.xl) {
-            // Description Section
-            descriptionSection
-            
-            // Category & Color Section
-            categoryColorSection
-            
-            // Due Date Section
-            dueDateSection
-            
-            // Notification Toggle
-            notificationSection
-            
-            // Collaborators Section
-            collaboratorsSection
-        }
-    }
-    
-    private var tasksTabContent: some View {
-        VStack(spacing: Spacing.xl) {
-            // Subtasks Section
-            subtasksSection
-        }
-    }
-    
     private var taskHeaderCard: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             // Title
-            if isEditingTitle {
+            if isEditMode {
                 TextField("Task title", text: $viewModel.task.title, axis: .vertical)
                     .font(Typography.title2)
                     .foregroundStyle(Color.textPrimary)
@@ -181,22 +131,18 @@ struct TaskDetailView: View {
                     .padding(Spacing.sm)
                     .background(Color.white.opacity(0.5))
                     .cornerRadius(8)
-                    .onSubmit {
-                        isEditingTitle = false
-                    }
             } else {
                 Text(viewModel.task.title)
                     .font(Typography.title2)
                     .foregroundStyle(Color.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        isEditingTitle = true
-                    }
             }
             
-            // Status Toggle
+            // Status Toggle (always enabled)
             Button(action: {
-                viewModel.toggleCompletion()
+                Task {
+                    await viewModel.toggleCompletion()
+                }
             }) {
                 HStack(spacing: Spacing.sm) {
                     Image(systemName: viewModel.task.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -217,54 +163,181 @@ struct TaskDetailView: View {
                 .font(Typography.bodyMedium)
                 .foregroundStyle(Color.textSecondary)
             
-            TextField("Add description...", text: Binding(
-                get: { viewModel.task.description ?? "" },
-                set: { viewModel.updateDescription($0.isEmpty ? nil : $0) }
-            ), axis: .vertical)
-                .font(Typography.bodyRegular)
-                .foregroundStyle(Color.textPrimary)
-                .textFieldStyle(.plain)
-                .padding(Spacing.md)
-                .background(Color.white)
-                .cornerRadius(12)
+            if isEditMode {
+                TextField("Add description...", text: Binding(
+                    get: { viewModel.task.description ?? "" },
+                    set: { viewModel.updateDescription($0.isEmpty ? nil : $0) }
+                ), axis: .vertical)
+                    .font(Typography.bodyRegular)
+                    .foregroundStyle(Color.textPrimary)
+                    .textFieldStyle(.plain)
+                    .padding(Spacing.md)
+                    .background(Color.white)
+                    .cornerRadius(12)
+            } else {
+                if let description = viewModel.task.description, !description.isEmpty {
+                    Text(description)
+                        .font(Typography.bodyRegular)
+                        .foregroundStyle(Color.textPrimary)
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                } else {
+                    Text("No description")
+                        .font(Typography.bodyRegular)
+                        .foregroundStyle(Color.textSecondary)
+                        .italic()
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                }
+            }
         }
         .padding(Spacing.lg)
         .cardStyle()
     }
     
-    private var categoryColorSection: some View {
-        VStack(spacing: Spacing.lg) {
-            // Category Picker
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                Text("Category")
-                    .font(Typography.bodyMedium)
-                    .foregroundStyle(Color.textSecondary)
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Spacing.sm) {
-                        ForEach(TaskCategory.allCases, id: \.self) { category in
-                            CategoryChip(
-                                title: category.displayName,
-                                isSelected: viewModel.task.category == category
-                            ) {
-                                viewModel.updateCategory(category)
+    private var categoryPrioritySection: some View {
+        Group {
+            if isEditMode {
+                // Edit Mode: Separate rows for each
+                VStack(spacing: Spacing.lg) {
+                    // Category
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("Category")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.textSecondary)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Spacing.sm) {
+                                ForEach(TaskCategory.allCases, id: \.self) { category in
+                                    CategoryChip(
+                                        title: category.displayName,
+                                        isSelected: viewModel.task.category == category
+                                    ) {
+                                        viewModel.updateCategory(category)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Priority
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("Priority")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.textSecondary)
+                        
+                        HStack(spacing: Spacing.md) {
+                            ForEach(TaskPriority.allCases, id: \.self) { priority in
+                                Button(action: {
+                                    viewModel.updatePriority(priority)
+                                }) {
+                                    HStack(spacing: Spacing.xs) {
+                                        Image(systemName: priority.icon)
+                                            .font(.system(size: 12))
+                                        Text(priority.displayName)
+                                            .font(Typography.caption)
+                                    }
+                                    .foregroundStyle(viewModel.task.priority == priority ? .white : Color.textPrimary)
+                                    .padding(.horizontal, Spacing.md)
+                                    .padding(.vertical, Spacing.sm)
+                                    .frame(maxWidth: .infinity)
+                                    .background(viewModel.task.priority == priority ? priority.color : Color.appBackground)
+                                    .cornerRadius(10)
+                                }
                             }
                         }
                     }
                 }
-            }
-            
-            Divider()
-            
-            // Color Picker Button
-            Button(action: { showColorPicker = true }) {
-                HStack {
-                    Text("Card Color")
-                        .font(Typography.bodyMedium)
+                .padding(Spacing.lg)
+                .cardStyle()
+            } else {
+                // View Mode: Side by side
+                HStack(alignment: .top, spacing: Spacing.md) {
+                    // Category
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("Category")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.textSecondary)
+                        
+                        HStack(spacing: Spacing.sm) {
+                            Image(systemName: viewModel.task.category.icon)
+                                .font(.system(size: 16))
+                            Text(viewModel.task.category.displayName)
+                                .font(Typography.bodyRegular)
+                        }
                         .foregroundStyle(Color.textPrimary)
+                        .padding(Spacing.sm)
+                        .background(Color.white)
+                        .cornerRadius(8)
+                    }
+                    .frame(maxWidth: .infinity)
                     
-                    Spacer()
-                    
+                    // Priority
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Text("Priority")
+                            .font(Typography.bodyMedium)
+                            .foregroundStyle(Color.textSecondary)
+                        
+                        HStack(spacing: Spacing.sm) {
+                            Image(systemName: viewModel.task.priority.icon)
+                                .font(.system(size: 16))
+                            Text(viewModel.task.priority.displayName)
+                                .font(Typography.bodyRegular)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity)
+                        .background(viewModel.task.priority.color)
+                        .cornerRadius(8)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(Spacing.lg)
+                .cardStyle()
+            }
+        }
+    }
+    
+    private var colorSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Text("Card Color")
+                .font(Typography.bodyMedium)
+                .foregroundStyle(Color.textSecondary)
+            
+            if isEditMode {
+                Button(action: { showColorPicker = true }) {
+                    HStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(hex: viewModel.task.color))
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.appBorder, lineWidth: 1)
+                            )
+                        
+                        Text("Change Color")
+                            .font(Typography.bodyRegular)
+                            .foregroundStyle(Color.textPrimary)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                    .padding(Spacing.md)
+                    .background(Color.white)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color(hex: viewModel.task.color))
                         .frame(width: 40, height: 40)
@@ -273,8 +346,8 @@ struct TaskDetailView: View {
                                 .stroke(Color.appBorder, lineWidth: 1)
                         )
                     
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
+                    Text(viewModel.task.color)
+                        .font(Typography.bodyRegular)
                         .foregroundStyle(Color.textSecondary)
                 }
             }
@@ -292,7 +365,7 @@ struct TaskDetailView: View {
                 
                 Spacer()
                 
-                if viewModel.task.dueDate != nil {
+                if isEditMode && viewModel.task.dueDate != nil {
                     Button(action: {
                         viewModel.updateDueDate(nil)
                     }) {
@@ -303,115 +376,55 @@ struct TaskDetailView: View {
                 }
             }
             
-            DatePicker(
-                "Select date",
-                selection: Binding(
-                    get: {
-                        if let dueDate = viewModel.task.dueDate {
-                            return Date(timeIntervalSince1970: dueDate)
-                        }
-                        return Date()
-                    },
-                    set: { viewModel.updateDueDate($0) }
-                ),
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            .datePickerStyle(.graphical)
-            .tint(Color.appPrimary)
-        }
-        .padding(Spacing.lg)
-        .cardStyle()
-    }
-    
-    private var subtasksSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Subtasks")
-                .font(Typography.bodyMedium)
-                .foregroundStyle(Color.textSecondary)
-            
-            // Existing Subtasks
-            ForEach(viewModel.task.subtasks) { subtask in
-                subtaskRow(subtask)
-            }
-            
-            // Add Subtask Field
-            HStack(spacing: Spacing.sm) {
-                TextField("Add subtask...", text: $newSubtaskTitle)
-                    .font(Typography.bodyRegular)
-                    .textFieldStyle(.plain)
-                    .onSubmit {
-                        if !newSubtaskTitle.isEmpty {
-                            viewModel.addSubtask(title: newSubtaskTitle)
-                            newSubtaskTitle = ""
-                        }
-                    }
-                
-                if !newSubtaskTitle.isEmpty {
-                    Button(action: {
-                        viewModel.addSubtask(title: newSubtaskTitle)
-                        newSubtaskTitle = ""
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Color.appPrimary)
-                    }
-                }
-            }
-            .padding(Spacing.md)
-            .background(Color.white)
-            .cornerRadius(12)
-        }
-        .padding(Spacing.lg)
-        .cardStyle()
-    }
-    
-    private func subtaskRow(_ subtask: Subtask) -> some View {
-        HStack(spacing: Spacing.sm) {
-            // Checkbox
-            Button(action: {
-                viewModel.toggleSubtask(id: subtask.id)
-            }) {
-                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
-                    .foregroundStyle(subtask.isCompleted ? Color.appSuccess : Color.textSecondary)
-            }
-            
-            // Title (Editable)
-            if editingSubtaskId == subtask.id {
-                TextField("Subtask", text: Binding(
-                    get: { subtask.title },
-                    set: { viewModel.updateSubtask(id: subtask.id, title: $0) }
-                ))
-                .font(Typography.bodyRegular)
-                .textFieldStyle(.plain)
-                .onSubmit {
-                    editingSubtaskId = nil
-                }
+            if isEditMode {
+                DatePicker(
+                    "Select date",
+                    selection: Binding(
+                        get: {
+                            if let dueDate = viewModel.task.dueDate {
+                                return Date(timeIntervalSince1970: dueDate)
+                            }
+                            return Date()
+                        },
+                        set: { viewModel.updateDueDate($0) }
+                    ),
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .datePickerStyle(.graphical)
+                .tint(Color.appPrimary)
             } else {
-                Text(subtask.title)
-                    .font(Typography.bodyRegular)
-                    .foregroundStyle(Color.textPrimary)
-                    .strikethrough(subtask.isCompleted)
-                    .onTapGesture {
-                        editingSubtaskId = subtask.id
-                    }
-            }
-            
-            Spacer()
-            
-            // Delete Button
-            Button(action: {
-                viewModel.deleteSubtask(id: subtask.id)
-            }) {
-                Image(systemName: "trash")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.appDestructive)
+                if let dueDate = viewModel.task.dueDate {
+                    Text(formatDueDate(dueDate))
+                        .font(Typography.bodyRegular)
+                        .foregroundStyle(Color.textPrimary)
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                } else {
+                    Text("No due date set")
+                        .font(Typography.bodyRegular)
+                        .foregroundStyle(Color.textSecondary)
+                        .italic()
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                }
             }
         }
-        .padding(Spacing.md)
-        .background(Color.white)
-        .cornerRadius(12)
+        .padding(Spacing.lg)
+        .cardStyle()
     }
+    
+    private func formatDueDate(_ timestamp: TimeInterval) -> String {
+        let date = Date(timeIntervalSince1970: timestamp)
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
     
     private var notificationSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -437,6 +450,7 @@ struct TaskDetailView: View {
                 }
             }
             .tint(Color.appPrimary)
+            .disabled(!isEditMode)
         }
         .padding(Spacing.lg)
         .cardStyle()
@@ -455,40 +469,51 @@ struct TaskDetailView: View {
                         collaboratorRow(email: email)
                     }
                 }
+            } else if !isEditMode {
+                Text("No collaborators")
+                    .font(Typography.bodyRegular)
+                    .foregroundStyle(Color.textSecondary)
+                    .italic()
+                    .padding(Spacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.white)
+                    .cornerRadius(12)
             }
             
-            // Add Collaborator Field
-            HStack(spacing: Spacing.sm) {
-                Image(systemName: "envelope")
-                    .font(.system(size: 16))
-                    .foregroundStyle(Color.textSecondary)
-                
-                TextField("Enter collaborator email...", text: $collaboratorEmail)
-                    .font(Typography.bodyRegular)
-                    .textFieldStyle(.plain)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .onSubmit {
-                        addCollaborator()
-                    }
-                
-                if !collaboratorEmail.isEmpty {
-                    Button(action: addCollaborator) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Color.appPrimary)
+            // Add Collaborator Field (only in edit mode)
+            if isEditMode {
+                HStack(spacing: Spacing.sm) {
+                    Image(systemName: "envelope")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.textSecondary)
+                    
+                    TextField("Enter collaborator email...", text: $collaboratorEmail)
+                        .font(Typography.bodyRegular)
+                        .textFieldStyle(.plain)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .onSubmit {
+                            addCollaborator()
+                        }
+                    
+                    if !collaboratorEmail.isEmpty {
+                        Button(action: addCollaborator) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Color.appPrimary)
+                        }
                     }
                 }
+                .padding(Spacing.md)
+                .background(Color.white)
+                .cornerRadius(12)
+                
+                // Info Text
+                Text("Up to 3 collaborators on free plan")
+                    .font(Typography.caption)
+                    .foregroundStyle(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
-            .padding(Spacing.md)
-            .background(Color.white)
-            .cornerRadius(12)
-            
-            // Info Text
-            Text("Up to 3 collaborators on free plan")
-                .font(Typography.caption)
-                .foregroundStyle(Color.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(Spacing.lg)
         .cardStyle()
@@ -496,9 +521,7 @@ struct TaskDetailView: View {
     
     private func collaboratorRow(email: String) -> some View {
         HStack(spacing: Spacing.sm) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 20))
-                .foregroundStyle(Color.appPrimary)
+            CollaboratorAvatar(email: email, size: 32)
             
             Text(email)
                 .font(Typography.bodyRegular)
@@ -506,12 +529,14 @@ struct TaskDetailView: View {
             
             Spacer()
             
-            Button(action: {
-                viewModel.removeCollaborator(email: email)
-            }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.textSecondary)
+            if isEditMode {
+                Button(action: {
+                    viewModel.removeCollaborator(email: email)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.textSecondary)
+                }
             }
         }
         .padding(Spacing.md)
@@ -590,10 +615,6 @@ struct SuccessBanner: View {
                 description: "Lean UX: Applying Lean Principles to Improve User Experience.",
                 category: .design,
                 color: "#DDD6FE",
-                subtasks: [
-                    Subtask(title: "Read Chapter 1", isCompleted: true),
-                    Subtask(title: "Take Notes", isCompleted: false)
-                ],
                 dueDate: Date().timeIntervalSince1970
             )
         )

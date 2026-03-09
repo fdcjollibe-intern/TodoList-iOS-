@@ -12,8 +12,8 @@ struct TaskItem: Codable, Identifiable, Hashable {
     var description: String?
     var category: TaskCategory
     var color: String // Hex color for card background
+    var priority: TaskPriority
     var isCompleted: Bool
-    var subtasks: [Subtask]
     var dueDate: TimeInterval?
     var createdAt: TimeInterval
     var updatedAt: TimeInterval
@@ -21,19 +21,6 @@ struct TaskItem: Codable, Identifiable, Hashable {
     var notifyOnChanges: Bool // Notification setting
     
     // MARK: - Computed Properties
-    
-    var completedSubtasksCount: Int {
-        subtasks.filter { $0.isCompleted }.count
-    }
-    
-    var totalSubtasksCount: Int {
-        subtasks.count
-    }
-    
-    var progress: Double {
-        guard totalSubtasksCount > 0 else { return 0 }
-        return Double(completedSubtasksCount) / Double(totalSubtasksCount)
-    }
     
     var backgroundColor: Color {
         Color(hex: color)
@@ -48,8 +35,8 @@ struct TaskItem: Codable, Identifiable, Hashable {
         description: String? = nil,
         category: TaskCategory = .personal,
         color: String = "#DDD6FE",
+        priority: TaskPriority = .medium,
         isCompleted: Bool = false,
-        subtasks: [Subtask] = [],
         dueDate: TimeInterval? = nil,
         createdAt: TimeInterval = Date().timeIntervalSince1970,
         updatedAt: TimeInterval = Date().timeIntervalSince1970,
@@ -62,8 +49,8 @@ struct TaskItem: Codable, Identifiable, Hashable {
         self.description = description
         self.category = category
         self.color = color
+        self.priority = priority
         self.isCompleted = isCompleted
-        self.subtasks = subtasks
         self.dueDate = dueDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -80,8 +67,8 @@ struct TaskItem: Codable, Identifiable, Hashable {
             "title": title,
             "category": category.rawValue,
             "color": color,
+            "priority": priority.rawValue,
             "isCompleted": isCompleted,
-            "subtasks": subtasks.map { $0.toDictionary() },
             "createdAt": createdAt,
             "updatedAt": updatedAt,
             "collaborators": collaborators,
@@ -97,28 +84,6 @@ struct TaskItem: Codable, Identifiable, Hashable {
         }
         
         return dict
-    }
-}
-
-// MARK: - Subtask
-
-struct Subtask: Codable, Identifiable, Hashable {
-    let id: String
-    var title: String
-    var isCompleted: Bool
-    
-    nonisolated init(id: String = UUID().uuidString, title: String, isCompleted: Bool = false) {
-        self.id = id
-        self.title = title
-        self.isCompleted = isCompleted
-    }
-    
-    func toDictionary() -> [String: Any] {
-        return [
-            "id": id,
-            "title": title,
-            "isCompleted": isCompleted
-        ]
     }
 }
 
@@ -162,6 +127,40 @@ enum TaskCategory: String, Codable, CaseIterable, Hashable {
             return Color(hex: "#D1FAE5") // Green
         case .design:
             return Color(hex: "#FEF3C7") // Yellow
+        }
+    }
+}
+
+// MARK: - Task Priority
+
+enum TaskPriority: String, Codable, CaseIterable, Hashable {
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    
+    var displayName: String {
+        return self.rawValue
+    }
+    
+    var color: Color {
+        switch self {
+        case .low:
+            return Color(hex: "#10B981") // Green
+        case .medium:
+            return Color(hex: "#F59E0B") // Orange
+        case .high:
+            return Color(hex: "#EF4444") // Red
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .low:
+            return "arrow.down.circle.fill"
+        case .medium:
+            return "minus.circle.fill"
+        case .high:
+            return "arrow.up.circle.fill"
         }
     }
 }

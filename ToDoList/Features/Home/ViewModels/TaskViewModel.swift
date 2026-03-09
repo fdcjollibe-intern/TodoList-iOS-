@@ -89,35 +89,19 @@ class TaskViewModel {
         task.category = category
     }
     
+    func updatePriority(_ priority: TaskPriority) {
+        task.priority = priority
+    }
+    
     func updateDueDate(_ date: Date?) {
         task.dueDate = date?.timeIntervalSince1970
     }
     
-    func toggleCompletion() {
+    @MainActor
+    func toggleCompletion() async {
         task.isCompleted.toggle()
-    }
-    
-    // MARK: - Subtask Operations
-    
-    func addSubtask(title: String) {
-        let subtask = Subtask(title: title)
-        task.subtasks.append(subtask)
-    }
-    
-    func updateSubtask(id: String, title: String) {
-        if let index = task.subtasks.firstIndex(where: { $0.id == id }) {
-            task.subtasks[index].title = title
-        }
-    }
-    
-    func toggleSubtask(id: String) {
-        if let index = task.subtasks.firstIndex(where: { $0.id == id }) {
-            task.subtasks[index].isCompleted.toggle()
-        }
-    }
-    
-    func deleteSubtask(id: String) {
-        task.subtasks.removeAll { $0.id == id }
+        // Auto-save when toggling completion
+        await updateTask()
     }
     
     // MARK: - Collaborator Operations

@@ -53,6 +53,28 @@ actor RealtimeDatabaseService {
         try await userRef.removeValue()
     }
     
+    /// Fetch user by email
+    func fetchUserByEmail(_ email: String) async throws -> User? {
+        let usersRef = database.child(DBPath.users)
+        let snapshot = try await usersRef.getData()
+        
+        guard let value = snapshot.value as? [String: Any] else {
+            return nil
+        }
+        
+        // Search through all users to find matching email
+        for (_, userData) in value {
+            guard let userDict = userData as? [String: Any],
+                  let userEmail = userDict["email"] as? String,
+                  userEmail.lowercased() == email.lowercased() else {
+                continue
+            }
+            return try parseUser(from: userDict)
+        }
+        
+        return nil
+    }
+    
     // MARK: - Task Operations
     
     /// Save task to database
@@ -167,18 +189,8 @@ actor RealtimeDatabaseService {
         let dueDate = data["dueDate"] as? TimeInterval
         let collaborators = data["collaborators"] as? [String] ?? []
         let notifyOnChanges = data["notifyOnChanges"] as? Bool ?? true
-        
-        var subtasks: [Subtask] = []
-        if let subtasksData = data["subtasks"] as? [[String: Any]] {
-            subtasks = subtasksData.compactMap { subtaskData in
-                guard let id = subtaskData["id"] as? String,
-                      let title = subtaskData["title"] as? String,
-                      let isCompleted = subtaskData["isCompleted"] as? Bool else {
-                    return nil
-                }
-                return Subtask(id: id, title: title, isCompleted: isCompleted)
-            }
-        }
+        let priorityString = data["priority"] as? String ?? "Medium"
+        let priority = TaskPriority(rawValue: priorityString) ?? .medium
         
         return TaskItem(
             id: id,
@@ -187,8 +199,8 @@ actor RealtimeDatabaseService {
             description: description,
             category: category,
             color: color,
+            priority: priority,
             isCompleted: isCompleted,
-            subtasks: subtasks,
             dueDate: dueDate,
             createdAt: createdAt,
             updatedAt: updatedAt,

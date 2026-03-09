@@ -15,8 +15,8 @@ extension Color {
     /// Tertiary accent - soft yellow
     static let appTertiary = Color(hex: "#FDE68A")
     
-    /// Success color - soft green
-    static let appSuccess = Color(hex: "#86EFAC")
+    /// Success color - medium green
+    static let appSuccess = Color(hex: "#22C55E")
     
     /// Warning color - soft orange
     static let appWarning = Color(hex: "#FDBA74")
