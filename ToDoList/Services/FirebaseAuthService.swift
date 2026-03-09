@@ -48,10 +48,6 @@ actor FirebaseAuthService {
     /// Sign in with Google
     @MainActor
     func signInWithGoogle() async throws -> String {
-        
-        throw AuthError.googleSignInNotConfigured
-        
-        /*
         // Get the client ID from Firebase configuration
         guard let clientID = Auth.auth().app?.options.clientID else {
             throw AuthError.unknown
@@ -82,7 +78,6 @@ actor FirebaseAuthService {
         // Sign in to Firebase
         let authResult = try await Auth.auth().signIn(with: credential)
         return authResult.user.uid
-        */
     }
     
     /// Sign out current user
